@@ -1,0 +1,27 @@
+# Pyenv
+.python-version
+
+# Environment variables
+.env
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Virtual environment
+venv/
+ENV/
+env/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+
+.agent_history

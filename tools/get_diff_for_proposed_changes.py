@@ -1,0 +1,110 @@
+import difflib
+import json
+import traceback
+
+import colorama
+
+# Initialize colorama for colored output in the terminal
+colorama.init()
+
+
+class TermColors:
+    """Terminal colors for diff output."""
+
+    RESET = "\033[0m"
+    RED = "\033[91m"
+    GREEN = "\033[92m"
+    # Using bold red and green for clearer distinction
+    BOLD_RED = "\033[1;91m"
+    BOLD_GREEN = "\033[1;92m"
+    YELLOW = "\033[93m"
+    BLUE = "\033[94m"
+    CYAN = "\033[96m"
+    WHITE = "\033[97m"
+    BOLD = "\033[1m"
+    UNDERLINE = "\033[4m"
+
+
+def get_diff_for_proposed_changes(file_path: str, proposed_new_content: str):
+    """
+    Calculates and returns a colored diff between a file's current content and proposed new content.
+    Args:
+        file_path (str): The path to the file.
+        proposed_new_content (str): The full proposed new content for the file.
+    Returns:
+        str: A JSON string containing the colored diff or an error message.
+    """
+    print(
+        f"--- TOOL EXECUTING: get_diff_for_proposed_changes(file_path='{file_path}', proposed_content_length={len(proposed_new_content)}) ---"
+    )
+    try:
+        original_content = ""
+        try:
+            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                original_content = f.read()
+        except FileNotFoundError:
+            # If the file doesn't exist, the diff will show the entire new content as additions
+            pass
+        except Exception as e:
+            print(f"Warning: Could not read original file for diff ''{file_path}': {e}")
+            # Proceed with empty original_content to show full new content as diff
+
+        original_lines = original_content.splitlines()
+        proposed_lines = proposed_new_content.splitlines()
+
+        diff = difflib.unified_diff(original_lines, proposed_lines, lineterm="")
+
+        colored_diff_lines = []
+        for line in diff:
+            if line.startswith("+"):
+                colored_diff_lines.append(f"{TermColors.GREEN}{line}{TermColors.RESET}")
+            elif line.startswith("-"):
+                colored_diff_lines.append(f"{TermColors.RED}{line}{TermColors.RESET}")
+            elif line.startswith("@"):
+                colored_diff_lines.append(f"{TermColors.CYAN}{line}{TermColors.RESET}")
+            else:
+                colored_diff_lines.append(line)
+
+        colored_diff = "\n".join(colored_diff_lines)
+
+        if not colored_diff:
+            return json.dumps(
+                {
+                    "file_path": file_path,
+                    "diff": "No changes proposed or file does not exist.",
+                    "status": "no_change",
+                }
+            )
+
+        return json.dumps(
+            {"file_path": file_path, "diff": colored_diff, "status": "success"}
+        )
+
+    except Exception as e:
+        print(f"Error in get_diff_for_proposed_changes: {e}")
+        traceback.print_exc()
+        return json.dumps({"error": str(e), "file_path": file_path, "status": "error"})
+
+
+def get_tool_definition():
+    return {
+        "type": "function",
+        "function": {
+            "name": "get_diff_for_proposed_changes",
+            "description": "Compares proposed new content for a file with its current content on disk and returns a unified diff (colorized for terminal display). This helps visualize changes before they are written. Paths are relative to the current working directory.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "The relative path to the file being changed or created.",
+                    },
+                    "proposed_new_content": {
+                        "type": "string",
+                        "description": "The full proposed new content for the file.",
+                    },
+                },
+                "required": ["file_path", "proposed_new_content"],
+            },
+        },
+    }
