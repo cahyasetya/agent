@@ -20,17 +20,14 @@ from rich.syntax import Syntax
 from rich.table import Table
 from rich.theme import Theme
 
-from tools.create_directory import create_directory
-from tools.create_empty_file import create_empty_file
-from tools.delete_directory import delete_directory
-from tools.delete_file import delete_file
-from tools.get_diff_for_proposed_changes import get_diff_for_proposed_changes
+from tools.file_operations.create_empty_file import create_empty_file
+from tools.file_operations.move_files import move_files
 
-# Import tool functions
-from tools.list_directory_contents import list_directory_contents
-from tools.read_file_content import read_file_content
-from tools.search_files import search_files
-from tools.write_to_file import write_to_file
+# Import tool functions from reorganized directories
+from tools.file_operations.read_file_content import read_file_content
+from tools.file_operations.write_to_file import write_to_file
+
+# Other tools will be imported dynamically through the directory scanning mechanism
 
 # --- Rich Console Setup for Colorful Output ---
 custom_theme = Theme(
@@ -120,66 +117,145 @@ def call_openrouter_api(messages, model, tools=None, tool_choice=None):
         raise e
 
 
-# --- Tool Definitions for LLM (Dynamically Loaded) ---
-def get_tool_definitions():
-    tool_definitions = []
+# --- Dynamic Tool Discovery and Loading ---
+def find_all_tool_modules():
+    """Scan all subdirectories in the tools directory for Python modules with get_tool_definition"""
+    all_tool_modules = {}
     tools_dir = "tools"
 
     if not os.path.exists(tools_dir):
         console.print(
             f"[warning]Warning: Tools directory '{tools_dir}' not found.[/warning]"
         )
-        return tool_definitions
+        return all_tool_modules
 
-    # Add tools directory to sys.path if not already there
+    # First, add tools directory itself to sys.path
     if tools_dir not in sys.path:
         sys.path.append(tools_dir)
 
-    for filename in os.listdir(tools_dir):
-        if filename.endswith(".py") and filename != "__init__.py":
-            module_name = filename[:-3]  # Remove .py extension
-            try:
-                # Use importlib to import the module dynamically
-                spec = importlib.util.spec_from_file_location(
-                    module_name, os.path.join(tools_dir, filename)
-                )
-                if spec and spec.loader:
-                    module = importlib.util.module_from_spec(spec)
-                    spec.loader.exec_module(module)
+    # Function to explore a directory and find tool modules
+    def explore_dir(directory):
+        modules_found = {}
 
-                    # Check if the module has the get_tool_definition function
+        # List all Python files in this directory
+        for item in os.listdir(directory):
+            item_path = os.path.join(directory, item)
+
+            # If it's a directory with __init__.py, explore it recursively
+            if os.path.isdir(item_path) and os.path.exists(
+                os.path.join(item_path, "__init__.py")
+            ):
+                # Recursively explore the subdirectory and add its modules
+                sub_modules = explore_dir(item_path)
+                modules_found.update(sub_modules)
+
+            # If it's a Python file, try to load it
+            elif item.endswith(".py") and item != "__init__.py":
+                # Get the module name without .py extension
+                module_name = item[:-3]
+
+                # Calculate the full module path
+                rel_path = os.path.relpath(
+                    os.path.dirname(item_path), start=os.getcwd()
+                )
+                full_module_path = f"{rel_path.replace(os.path.sep, '.')}.{module_name}"
+
+                try:
+                    # Use importlib to import the module
+                    module = importlib.import_module(full_module_path)
+
+                    # Check if it has the get_tool_definition function
                     if hasattr(module, "get_tool_definition") and callable(
                         module.get_tool_definition
                     ):
-                        tool_def = module.get_tool_definition()
-                        # Add to list in appropriate format
-                        if isinstance(tool_def, list):
-                            tool_definitions.extend(tool_def)
-                        else:
-                            tool_definitions.append(tool_def)
-                        console.print(
-                            f"[success]Loaded tool definition(s) from {filename}.[/success]"
-                        )
-                    else:
-                        console.print(
-                            f"[warning]Warning: Tool module {filename} does not have a get_tool_definition function.[/warning]"
-                        )
-                else:
+                        # Store the module with its function name for later access
+                        function_name = None
+
+                        # Try to determine the function name from the tool definition
+                        try:
+                            tool_def = module.get_tool_definition()
+                            if isinstance(tool_def, dict) and "function" in tool_def:
+                                function_name = tool_def["function"].get("name")
+                        except Exception:
+                            pass
+
+                        # If we couldn't get the name, use the module name
+                        if not function_name:
+                            function_name = module_name
+
+                        modules_found[function_name] = (module, full_module_path)
+                except Exception as e:
                     console.print(
-                        f"[warning]Warning: Could not create module spec for {filename}.[/warning]"
+                        f"[warning]Could not load module {full_module_path}: {e}[/warning]"
                     )
 
-            except Exception as e:
-                console.print(
-                    f"[error]Error loading tool definition from {filename}: {e}[/error]"
-                )
-                traceback.print_exc()
+        return modules_found
 
-    # Clean up sys.path
+    # Start the exploration at the tools directory
+    all_tool_modules = explore_dir(tools_dir)
+
+    # Remove tools directory from sys.path
     if tools_dir in sys.path:
         sys.path.remove(tools_dir)
 
+    return all_tool_modules
+
+
+# --- Tool Definitions for LLM (Dynamically Loaded) ---
+def get_tool_definitions():
+    """Get all tool definitions from available modules"""
+    tool_definitions = []
+    tool_modules = find_all_tool_modules()
+
+    for function_name, (module, module_path) in tool_modules.items():
+        try:
+            if hasattr(module, "get_tool_definition") and callable(
+                module.get_tool_definition
+            ):
+                tool_def = module.get_tool_definition()
+                # Add to list in appropriate format
+                if isinstance(tool_def, list):
+                    tool_definitions.extend(tool_def)
+                else:
+                    tool_definitions.append(tool_def)
+                console.print(
+                    f"[success]Loaded tool definition for '{function_name}' from {module_path}[/success]"
+                )
+            else:
+                console.print(
+                    f"[warning]Module {module_path} has no get_tool_definition function[/warning]"
+                )
+        except Exception as e:
+            console.print(
+                f"[error]Error loading tool definition from {module_path}: {e}[/error]"
+            )
+            traceback.print_exc()
+
     return tool_definitions
+
+
+def get_available_functions():
+    """Create a dictionary mapping function names to their callable implementations"""
+    available_functions = {}
+    tool_modules = find_all_tool_modules()
+
+    # First, add our explicitly imported functions
+    available_functions.update(
+        {
+            "read_file_content": read_file_content,
+            "write_to_file": write_to_file,
+            "create_empty_file": create_empty_file,
+            "move_files": move_files,
+        }
+    )
+
+    # Then add dynamically discovered functions
+    for function_name, (module, _) in tool_modules.items():
+        # Check if the module has a function with the same name as the tool
+        if hasattr(module, function_name) and callable(getattr(module, function_name)):
+            available_functions[function_name] = getattr(module, function_name)
+
+    return available_functions
 
 
 def display_logo():
@@ -198,42 +274,41 @@ def display_available_tools():
     tools_table = Table(title="📋 Available Tools", border_style="bright_blue")
     tools_table.add_column("Tool Name", style="bright_cyan")
     tools_table.add_column("Description", style="bright_white")
+    tools_table.add_column("Category", style="bright_magenta")
 
-    # Add rows for each tool
-    tools_table.add_row(
-        "list_directory_contents", "List files and directories in a specified path"
-    )
-    tools_table.add_row("read_file_content", "Read and return the contents of a file")
-    tools_table.add_row(
-        "write_to_file", "Write content to a file (creates or overwrites)"
-    )
-    tools_table.add_row("create_empty_file", "Create a new empty file")
-    tools_table.add_row("create_directory", "Create a new directory")
-    tools_table.add_row("search_files", "Search for files matching a pattern")
-    tools_table.add_row(
-        "get_diff_for_proposed_changes",
-        "Show a colorful diff between original and new content",
-    )
-    tools_table.add_row("delete_file", "Delete a file")
-    tools_table.add_row("delete_directory", "Delete a directory")
+    # Get all tool definitions
+    tool_defs = get_tool_definitions()
 
-    # Add each tool to the table only after verifying it's importable
-    # But don't keep the imports outside the function
-    try:
-        importlib.import_module("tools.rich_output")
-        tools_table.add_row(
-            "rich_output", "Format output with rich text, colors, and highlighting"
-        )
-    except ImportError:
-        pass
+    # Categorize tools
+    file_ops_tools = []
+    formatting_tools = []
+    other_tools = []
 
-    try:
-        importlib.import_module("tools.syntax_highlight")
-        tools_table.add_row(
-            "syntax_highlight", "Highlight syntax of code files with color"
-        )
-    except ImportError:
-        pass
+    for tool_def in tool_defs:
+        if isinstance(tool_def, dict) and "function" in tool_def:
+            function_def = tool_def["function"]
+            name = function_def.get("name", "Unknown")
+            description = function_def.get("description", "No description available")
+
+            # Categorize based on module path
+            if "file_operations" in str(tool_def):
+                file_ops_tools.append((name, description))
+            elif "formatting" in str(tool_def):
+                formatting_tools.append((name, description))
+            else:
+                other_tools.append((name, description))
+
+    # Add file operation tools
+    for name, description in file_ops_tools:
+        tools_table.add_row(name, description, "File Operations")
+
+    # Add formatting tools
+    for name, description in formatting_tools:
+        tools_table.add_row(name, description, "Formatting")
+
+    # Add other tools
+    for name, description in other_tools:
+        tools_table.add_row(name, description, "Miscellaneous")
 
     console.print(tools_table)
 
@@ -267,7 +342,7 @@ if __name__ == "__main__":
         "You are a helpful assistant for refactoring and managing files. "
         "You can use tools to list directory contents, read files, write content to files, "
         "create empty files, create directories, search for files, or get a diff of proposed changes to a file if needed. "
-        "You also have tools to delete files and directories. "
+        "You also have tools to delete files and directories, and move files (with wildcard support). "
         "Paths are relative to the script's current working directory. "
         "Maintain context from previous turns to understand follow-up questions. "
         "\n\nRefactoring/Editing Workflow (VERY IMPORTANT):\n"
@@ -278,6 +353,9 @@ if __name__ == "__main__":
         "5. After presenting the diff, wait for the user's feedback. If the user rejects the changes or asks for different modifications, engage in a dialogue to understand their requirements and, if necessary, repeat steps 2-4.\n"
         "6. If the user confirms the changes (e.g., by saying 'yes', 'proceed', 'apply changes'), then and only then, use the `write_to_file` tool.\n"
         "Do not write only partial changes or just function signatures unless that is the entirety of the intended new file content. If creating a new file, the diff step can show the entire content as new.\n"
+        "\n\nFile Movement and Organization:\n"
+        "You can use the `move_files` tool to move files or directories, including with wildcard patterns like *.py or data/*.csv. "
+        "Be careful when using wildcards and always confirm with the user before executing operations that might affect multiple files.\n"
         "\n\nRich Output Support:\n"
         "You can use the `rich_output` tool to format your responses with syntax highlighting, markdown rendering, and panels with borders.\n"
         "\n\nSyntax Highlighting:\n"
@@ -365,39 +443,8 @@ if __name__ == "__main__":
                     )
                 )
 
-                # The available functions dictionary maps to the imported tool functions
-                available_functions = {
-                    "list_directory_contents": list_directory_contents,
-                    "read_file_content": read_file_content,
-                    "write_to_file": write_to_file,
-                    "create_empty_file": create_empty_file,
-                    "create_directory": create_directory,
-                    "search_files": search_files,
-                    "get_diff_for_proposed_changes": get_diff_for_proposed_changes,
-                    "delete_file": delete_file,
-                    "delete_directory": delete_directory,
-                }
-
-                # Add each tool only after dynamically importing it
-                try:
-                    rich_output_module = importlib.import_module("tools.rich_output")
-                    if hasattr(rich_output_module, "rich_output"):
-                        available_functions["rich_output"] = (
-                            rich_output_module.rich_output
-                        )
-                except ImportError:
-                    pass
-
-                try:
-                    syntax_highlight_module = importlib.import_module(
-                        "tools.syntax_highlight"
-                    )
-                    if hasattr(syntax_highlight_module, "syntax_highlight"):
-                        available_functions["syntax_highlight"] = (
-                            syntax_highlight_module.syntax_highlight
-                        )
-                except ImportError:
-                    pass
+                # Get all available functions
+                available_functions = get_available_functions()
 
                 for tool_call in tool_calls:
                     function_data = tool_call.get("function", {})
