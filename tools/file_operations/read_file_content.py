@@ -2,16 +2,21 @@ import json
 import os
 import traceback
 
+from tools.shared.path_utils import resolve_path
 
-def read_file_content(file_path: str):
+
+def read_file_content(file_path: str, use_focus_path: bool = True):
     """
-    Reads the content of a specified file.
+    Reads the content of a specified file, optionally using the focus path.
+    
     Args:
-        file_path (str): The path to the file to read (relative to the script's CWD).
+        file_path (str): The path to the file to read (relative to base directory).
+        use_focus_path (bool): Whether to use the focus path as base directory.
+        
     Returns:
         str: A JSON string containing the file content or an error message.
     """
-    print(f"--- TOOL EXECUTING: read_file_content(file_path='{file_path}') ---")
+    print(f"--- TOOL EXECUTING: read_file_content(file_path='{file_path}', use_focus_path={use_focus_path}) ---")
     MAX_FILE_SIZE_WARN = 1024 * 1024  # 1MB, for console warning
     try:
         if not isinstance(file_path, str):
@@ -23,10 +28,10 @@ def read_file_content(file_path: str):
                 }
             )
 
-        base_dir = os.getcwd()
-        resolved_path = os.path.abspath(os.path.join(base_dir, file_path))
+        # Resolve the path using the shared utility
+        resolved_path, base_dir, is_in_base_dir = resolve_path(file_path, use_focus_path)
 
-        if not resolved_path.startswith(base_dir):
+        if not is_in_base_dir:
             alert_msg = "Security Alert: Attempt to read file "
             alert_msg += f"'{resolved_path}' outside of base directory '{base_dir}'."
             print(alert_msg)
@@ -34,6 +39,7 @@ def read_file_content(file_path: str):
                 {
                     "error": "Access denied: File path is outside the allowed directory.",
                     "file_path": file_path,
+                    "base_directory": base_dir,
                     "status": "error",
                 })
 
@@ -42,6 +48,7 @@ def read_file_content(file_path: str):
                 {
                     "error": "File not found.",
                     "file_path": file_path,
+                    "resolved_path": resolved_path,
                     "status": "error",
                 }
             )
@@ -68,6 +75,7 @@ def read_file_content(file_path: str):
         return json.dumps(
             {
                 "file_path": file_path,
+                "resolved_path": resolved_path,
                 "content": content_to_return,
                 "status": "success",
             }
@@ -95,7 +103,7 @@ def get_tool_definition():
         "function": {
             "name": "read_file_content",
             "description": "Reads and returns the content of a specified text file. "
-            "File paths are relative to the current working directory.",
+            "File paths are relative to the current working directory or focus directory if one is set.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -103,7 +111,15 @@ def get_tool_definition():
                         "type": "string",
                         "description": "The relative path to the file to be read. "
                         "e.g., 'document.txt' or 'folder/data.csv'",
-                    }},
+                    },
+                    "use_focus_path": {
+                        "type": "boolean",
+                        "description": "Whether to use the focus path as the base directory. "
+                        "If true (default), paths are relative to the focus directory if one is set. "
+                        "If false, paths are always relative to the current working directory.",
+                        "default": True,
+                    }
+                },
                 "required": ["file_path"],
             },
         },

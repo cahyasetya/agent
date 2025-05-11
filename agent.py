@@ -24,6 +24,7 @@ from tools.file_operations.move_files import move_files
 # Import tool functions from reorganized directories
 from tools.file_operations.read_file_content import read_file_content
 from tools.file_operations.write_to_file import write_to_file
+from tools.shared.path_utils import set_focus_path
 
 # Other tools will be imported dynamically through the directory scanning
 # mechanism
@@ -360,6 +361,8 @@ if __name__ == "__main__":
         "Type '[command]exit[/command]' or '[command]quit[/command]' to end "
         "the session\n"
         "File/directory paths for tools are relative to where this script is run")
+    
+    # Process and set the focus path if provided
     if focus_path:
         # Ensure the path is absolute for clarity in the prompt
         abs_focus_path = (
@@ -383,12 +386,20 @@ if __name__ == "__main__":
                     padding=(0, 1),
                 )
             )
+            
+            # Set the focus path in the shared module
+            set_focus_path(abs_focus_path)
+            
         else:
             warning_msg = "[warning]Warning: The provided path '{0}' ".format(
                 focus_path)
             warning_msg += "is not a valid directory. It will be ignored.[/warning]"
             console.print(warning_msg)
             focus_path = None  # Reset if not a valid directory
+            set_focus_path(None)  # Ensure focus path is None in the shared module
+    else:
+        # If no focus path is provided, explicitly set it to None
+        set_focus_path(None)
 
     console.print(
         Panel.fit(
@@ -441,7 +452,13 @@ if __name__ == "__main__":
         "highlighting, markdown rendering, and panels with borders.\n"
         "\n\nSyntax Highlighting:\n"
         "You can use the `syntax_highlight` tool to show the content of code files "
-        "with proper syntax highlighting. Code width should be 80")
+        "with proper syntax highlighting. Code width should be 80"
+        "\n\nFocus Path Behavior:\n"
+        "Most file operation tools support a `use_focus_path` parameter which defaults to true. "
+        "When true, paths are relative to the focus directory if one is set. "
+        "When false, paths are always relative to the current working directory. "
+        "This allows flexibility in working with files in different directories."
+    )
 
     if focus_path:
         abs_focus_path = os.path.abspath(
@@ -453,9 +470,13 @@ if __name__ == "__main__":
             "Please prioritize operations, suggestions, and file paths within or "
             "relative to this directory unless explicitly told otherwise. When "
             "providing file paths in your responses or tool arguments, use paths "
-            "relative to the script's current working directory, but keep in mind "
-            "this focus directory. If a user refers to 'this directory' or 'the "
-            "project folder', assume they mean this focus directory.")
+            "relative to the focus directory by default. "
+            "If a user refers to 'this directory' or 'the project folder', "
+            "assume they mean this focus directory. "
+            "By default, all paths provided to tools like read_file_content will "
+            "be considered relative to this focus directory. "
+            "If the user wants to operate on files outside the focus directory but within "
+            "the allowed scope, they can pass use_focus_path=False to the appropriate tool.")
         system_content += context_msg
 
     messages = [{"role": "system", "content": system_content}]

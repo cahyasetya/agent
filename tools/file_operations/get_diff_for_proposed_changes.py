@@ -1,8 +1,10 @@
 import difflib
 import json
+import os
 import traceback
 
 import colorama
+from tools.shared.path_utils import resolve_path
 
 # Initialize colorama for colored output in the terminal
 colorama.init()
@@ -25,34 +27,53 @@ class TermColors:
     UNDERLINE = "\033[4m"
 
 
-def get_diff_for_proposed_changes(file_path: str, proposed_new_content: str):
+def get_diff_for_proposed_changes(file_path: str, proposed_new_content: str, use_focus_path: bool = True):
     """
     Calculates and returns a colored diff between a file's current content and
     proposed new content.
+    
     Args:
-        file_path (str): The path to the file.
+        file_path (str): The path to the file (relative to base directory).
         proposed_new_content (str): The full proposed new content for the file.
+        use_focus_path (bool): Whether to use the focus path as base directory.
+        
     Returns:
         str: A JSON string containing the colored diff or an error message.
     """
     log_msg = "--- TOOL EXECUTING: get_diff_for_proposed_changes"
     log_msg += "(file_path='{}', ".format(file_path)
-    log_msg += "proposed_content_length={}) ---".format(
-        len(proposed_new_content))
+    log_msg += "proposed_content_length={}, ".format(len(proposed_new_content))
+    log_msg += "use_focus_path={}) ---".format(use_focus_path)
     print(log_msg)
 
     try:
+        # Resolve the path using the shared utility
+        resolved_path, base_dir, is_in_base_dir = resolve_path(file_path, use_focus_path)
+
+        if not is_in_base_dir:
+            alert_msg = "Security Alert: Attempt to access file "
+            alert_msg += f"'{resolved_path}' outside of base directory '{base_dir}'."
+            print(alert_msg)
+            return json.dumps(
+                {
+                    "error": "Access denied: File path is outside the allowed directory.",
+                    "file_path": file_path,
+                    "base_directory": base_dir,
+                    "status": "error",
+                })
+
         original_content = ""
         try:
-            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-                original_content = f.read()
-        except FileNotFoundError:
-            # If the file doesn't exist, the diff will show the entire new
-            # content as additions
-            pass
+            if os.path.exists(resolved_path):
+                with open(resolved_path, "r", encoding="utf-8", errors="ignore") as f:
+                    original_content = f.read()
+            else:
+                # If the file doesn't exist, the diff will show the entire new
+                # content as additions
+                print(f"Note: File '{resolved_path}' does not exist. Diff will show all content as new.")
         except Exception as e:
             warn_msg = "Warning: Could not read original file for diff "
-            warn_msg += "'{}': {}".format(file_path, e)
+            warn_msg += "'{}': {}".format(resolved_path, e)
             print(warn_msg)
             # Proceed with empty original_content to show full new content as
             # diff
@@ -85,13 +106,19 @@ def get_diff_for_proposed_changes(file_path: str, proposed_new_content: str):
             return json.dumps(
                 {
                     "file_path": file_path,
+                    "resolved_path": resolved_path,
                     "diff": "No changes proposed or file does not exist.",
                     "status": "no_change",
                 }
             )
 
         return json.dumps(
-            {"file_path": file_path, "diff": colored_diff, "status": "success"}
+            {
+                "file_path": file_path, 
+                "resolved_path": resolved_path,
+                "diff": colored_diff, 
+                "status": "success"
+            }
         )
 
     except Exception as e:
@@ -111,7 +138,7 @@ def get_tool_definition():
                            "content on disk and returns a unified diff (colorized for "
                            "terminal display). This helps visualize changes before they "
                            "are written. Paths are relative to the current working "
-                           "directory.",
+                           "directory or focus directory if one is set.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -124,6 +151,13 @@ def get_tool_definition():
                         "type": "string",
                         "description": "The full proposed new content for the file.",
                     },
+                    "use_focus_path": {
+                        "type": "boolean",
+                        "description": "Whether to use the focus path as the base directory. "
+                        "If true (default), paths are relative to the focus directory if one is set. "
+                        "If false, paths are always relative to the current working directory.",
+                        "default": True,
+                    }
                 },
                 "required": [
                     "file_path",

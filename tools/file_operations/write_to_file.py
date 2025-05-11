@@ -2,19 +2,24 @@ import json
 import os
 import traceback
 
+from tools.shared.path_utils import resolve_path
 
-def write_to_file(file_path: str, content: str):
+
+def write_to_file(file_path: str, content: str, use_focus_path: bool = True):
     """
-    Writes the given content to a specified file.
+    Writes the given content to a specified file, optionally using the focus path.
     If the file exists, it will be overwritten. If it doesn't exist, it will be created.
+    
     Args:
-        file_path (str): The path to the file to write (relative to the script's CWD).
+        file_path (str): The path to the file to write (relative to base directory).
         content (str): The content to write to the file.
+        use_focus_path (bool): Whether to use the focus path as base directory.
+        
     Returns:
         str: A JSON string indicating success or an error message.
     """
     print(
-        f"--- TOOL EXECUTING: write_to_file(file_path='{file_path}', content_length={len(content)}) ---"
+        f"--- TOOL EXECUTING: write_to_file(file_path='{file_path}', content_length={len(content)}, use_focus_path={use_focus_path}) ---"
     )
     try:
         if not isinstance(file_path, str):
@@ -34,10 +39,10 @@ def write_to_file(file_path: str, content: str):
                 }
             )
 
-        base_dir = os.getcwd()
-        resolved_path = os.path.abspath(os.path.join(base_dir, file_path))
+        # Resolve the path using the shared utility
+        resolved_path, base_dir, is_in_base_dir = resolve_path(file_path, use_focus_path)
 
-        if not resolved_path.startswith(base_dir):
+        if not is_in_base_dir:
             print(
                 f"Security Alert: Attempt to write file '{resolved_path}' outside of base directory '{base_dir}'."
             )
@@ -45,6 +50,7 @@ def write_to_file(file_path: str, content: str):
                 {
                     "error": "Access denied: File path is outside the allowed directory.",
                     "file_path": file_path,
+                    "base_directory": base_dir,
                     "status": "error",
                 })
 
@@ -70,6 +76,7 @@ def write_to_file(file_path: str, content: str):
         return json.dumps(
             {
                 "file_path": file_path,
+                "resolved_path": resolved_path,
                 "status": "success",
                 "message": f"Content successfully written to {resolved_path}.",
             }
@@ -88,7 +95,7 @@ def get_tool_definition():
         "type": "function",
         "function": {
             "name": "write_to_file",
-            "description": "Writes the given string content to a specified file. If the file exists, it will be overwritten. If it does not exist, it will be created. File paths are relative to the current working directory.",
+            "description": "Writes the given string content to a specified file. If the file exists, it will be overwritten. If it does not exist, it will be created. File paths are relative to the current working directory or focus directory if one is set.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -100,6 +107,13 @@ def get_tool_definition():
                         "type": "string",
                         "description": "The text content to write into the file.",
                     },
+                    "use_focus_path": {
+                        "type": "boolean",
+                        "description": "Whether to use the focus path as the base directory. "
+                        "If true (default), paths are relative to the focus directory if one is set. "
+                        "If false, paths are always relative to the current working directory.",
+                        "default": True,
+                    }
                 },
                 "required": [
                     "file_path",
