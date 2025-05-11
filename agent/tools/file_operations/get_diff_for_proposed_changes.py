@@ -4,7 +4,7 @@ import os
 import traceback
 
 import colorama
-from tools.shared.path_utils import resolve_path
+from agent.tools.shared.path_utils import resolve_path
 
 # Initialize colorama for colored output in the terminal
 colorama.init()

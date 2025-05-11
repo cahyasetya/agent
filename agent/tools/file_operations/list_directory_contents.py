@@ -2,8 +2,8 @@ import json
 import os
 import traceback
 
-from tools.shared.path_utils import resolve_path
-from tools.shared.gitignore_parser import parse_gitignore, is_ignored
+from agent.tools.shared.path_utils import resolve_path
+from agent.tools.shared.gitignore_parser import parse_gitignore, is_ignored
 
 
 def list_directory_contents(directory_path: str = ".", use_focus_path: bool = True, respect_gitignore: bool = True):

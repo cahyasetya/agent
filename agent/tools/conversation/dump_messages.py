@@ -3,7 +3,7 @@ import os
 import traceback
 from datetime import datetime
 
-from tools.shared.path_utils import resolve_path
+from agent.tools.shared.path_utils import resolve_path
 
 
 def dump_messages(filename: str = None, use_focus_path: bool = True):

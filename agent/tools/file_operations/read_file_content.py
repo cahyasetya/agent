@@ -2,7 +2,7 @@ import json
 import os
 import traceback
 
-from tools.shared.path_utils import resolve_path
+from agent.tools.shared.path_utils import resolve_path
 
 
 def read_file_content(file_path: str, use_focus_path: bool = True):

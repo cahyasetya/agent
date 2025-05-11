@@ -34,11 +34,11 @@ The project is organized into modular components:
   - **commands.py**: Special command handling
   - **conversation.py**: Conversation saving and loading
   - **tools.py**: Tool discovery and management
-- **tools/**: Modular tools that the agent can use
-  - **file_operations/**: File system related tools
-  - **formatting/**: Output formatting tools
-  - **git/**: Git-related tools
-  - **shared/**: Shared utilities for all tools
+  - **tools/**: Modular tools that the agent can use
+    - **file_operations/**: File system related tools
+    - **formatting/**: Output formatting tools
+    - **git/**: Git-related tools
+    - **shared/**: Shared utilities for all tools
 
 ## Setup
 
@@ -64,19 +64,28 @@ The project is organized into modular components:
    export OPENROUTER_API_KEY=your_openrouter_api_key_here
    ```
 
+4. Install the agent package:
+   ```bash
+   # Install the agent package
+   make install-agent
+   
+   # Verify the installation
+   agent --help
+   ```
+
 ## Usage
 
 Run the agent with various options:
 
 ```bash
 # Basic usage
-python main.py
+agent
 
 # Focus on a specific directory
-python main.py --path /path/to/your/project
+agent --path /path/to/your/project
 
 # Load a previous conversation
-python main.py --load conversation_name
+agent --load conversation_name
 ```
 
 Or use the provided Makefile:
@@ -110,7 +119,7 @@ Configure the `.env` file to set up your environment variables:
 
 ## Extending the Agent
 
-To add new capabilities to the agent, add new tool modules in the `tools/` directory. Each tool should have:
+To add new capabilities to the agent, add new tool modules in the `agent/tools/` directory. Each tool should have:
 
 1. A main function that implements the tool's functionality
 2. A `get_tool_definition()` function that returns the tool's schema

@@ -1,7 +1,7 @@
 import json
 import os
 
-from tools.shared.path_utils import resolve_path
+from agent.tools.shared.path_utils import resolve_path
 
 
 def get_tool_definition():

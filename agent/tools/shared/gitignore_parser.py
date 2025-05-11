@@ -1,10 +1,12 @@
+"""Gitignore parser utilities for the AI agent.
+
+This module provides functionality to parse .gitignore files and check if paths match gitignore patterns.
+"""
 import os
-import re
 import fnmatch
 
 def parse_gitignore(base_dir):
-    """
-    Parses a .gitignore file and returns a list of patterns to ignore.
+    """Parses a .gitignore file and returns a list of patterns to ignore.
     
     Args:
         base_dir (str): Directory where .gitignore is located
@@ -32,10 +34,10 @@ def parse_gitignore(base_dir):
         return patterns
     
     try:
-        with open(gitignore_path, 'r') as f:
+        with open(gitignore_path, "r") as f:
             for line in f:
                 line = line.strip()
-                if line and not line.startswith('#'):
+                if line and not line.startswith("#"):
                     patterns.append(line)
     except Exception as e:
         print(f"Error parsing .gitignore file: {e}")
@@ -60,8 +62,7 @@ def parse_gitignore(base_dir):
     return patterns
 
 def is_ignored(path, patterns):
-    """
-    Checks if a path should be ignored based on gitignore patterns.
+    """Checks if a path should be ignored based on gitignore patterns.
     
     Args:
         path (str): Path to check
@@ -75,7 +76,7 @@ def is_ignored(path, patterns):
     
     for pattern in patterns:
         # Handle directory-specific patterns
-        is_dir_pattern = pattern.endswith('/')
+        is_dir_pattern = pattern.endswith("/")
         is_dir = os.path.isdir(path)
         
         # Strip trailing slash for matching

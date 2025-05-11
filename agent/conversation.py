@@ -12,7 +12,7 @@ from typing import Tuple, List, Dict, Any, Optional
 from rich.panel import Panel
 
 from .console import console
-from tools.shared.path_utils import resolve_path
+from .tools.shared.path_utils import resolve_path
 
 # Directory for saving conversations
 CONVERSATIONS_DIR = "conversations"

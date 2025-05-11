@@ -2,7 +2,7 @@ import fnmatch
 import json
 import os
 import traceback
-from tools.shared.gitignore_parser import parse_gitignore, is_ignored
+from agent.tools.shared.gitignore_parser import parse_gitignore, is_ignored
 
 
 def search_files(search_path: str = ".", file_pattern: str = "*", respect_gitignore: bool = True):

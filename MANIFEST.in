@@ -1,0 +1,9 @@
+include README.md
+include requirements.txt
+include GUIDE.md
+include DEVELOPMENT.md
+recursive-include agent *.py
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude *.so
+global-exclude .DS_Store

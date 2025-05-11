@@ -1,3 +1,8 @@
+"""
+Path utilities for the AI agent.
+
+This module provides path resolution and manipulation utilities.
+"""
 import os
 
 # Global variable to store the focus path across the application
