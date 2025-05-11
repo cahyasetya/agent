@@ -46,8 +46,7 @@ def write_to_file(file_path: str, content: str):
                     "error": "Access denied: File path is outside the allowed directory.",
                     "file_path": file_path,
                     "status": "error",
-                }
-            )
+                })
 
         parent_dir = os.path.dirname(resolved_path)
         if parent_dir and not os.path.exists(parent_dir):
@@ -55,14 +54,15 @@ def write_to_file(file_path: str, content: str):
                 os.makedirs(parent_dir)
                 print(f"Created parent directory: {parent_dir}")
             except Exception as e_mkdir:
-                print(f"Error creating parent directory {parent_dir}: {e_mkdir}")
+                print(
+                    f"Error creating parent directory {parent_dir}: {e_mkdir}"
+                )
                 return json.dumps(
                     {
                         "error": f"Could not create parent directory: {str(e_mkdir)}",
                         "file_path": file_path,
                         "status": "error",
-                    }
-                )
+                    })
 
         with open(resolved_path, "w", encoding="utf-8") as f:
             f.write(content)
@@ -78,7 +78,9 @@ def write_to_file(file_path: str, content: str):
     except Exception as e:
         print(f"Error in write_to_file: {e}")
         traceback.print_exc()
-        return json.dumps({"error": str(e), "file_path": file_path, "status": "error"})
+        return json.dumps(
+            {"error": str(e), "file_path": file_path, "status": "error"}
+        )
 
 
 def get_tool_definition():
@@ -99,7 +101,9 @@ def get_tool_definition():
                         "description": "The text content to write into the file.",
                     },
                 },
-                "required": ["file_path", "content"],
+                "required": [
+                    "file_path",
+                    "content"],
             },
         },
     }

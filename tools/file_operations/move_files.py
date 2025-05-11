@@ -69,7 +69,9 @@ def move_files(source_path, destination_path, overwrite=False):
                 )
 
             # Destination must be a directory for multiple files
-            if len(matched_paths) > 1 and not os.path.isdir(abs_destination_path):
+            if len(matched_paths) > 1 and not os.path.isdir(
+                abs_destination_path
+            ):
                 # Create destination directory if it doesn't exist
                 try:
                     os.makedirs(abs_destination_path, exist_ok=True)
@@ -86,7 +88,9 @@ def move_files(source_path, destination_path, overwrite=False):
                 item_name = os.path.basename(item_path)
                 # For multiple files, determine the destination for each file
                 if os.path.isdir(abs_destination_path):
-                    item_destination = os.path.join(abs_destination_path, item_name)
+                    item_destination = os.path.join(
+                        abs_destination_path, item_name
+                    )
                 else:
                     item_destination = abs_destination_path
 
@@ -99,21 +103,21 @@ def move_files(source_path, destination_path, overwrite=False):
                                 "destination": item_destination,
                                 "status": "skipped",
                                 "message": "Destination exists and overwrite is False.",
-                            }
-                        )
+                            })
                         continue
 
                     # If overwrite is True but destination is a directory and source is a file (or vice versa),
                     # we cannot overwrite without removing first
-                    if os.path.isdir(item_destination) != os.path.isdir(item_path):
+                    if os.path.isdir(item_destination) != os.path.isdir(
+                        item_path
+                    ):
                         results.append(
                             {
                                 "source": item_path,
                                 "destination": item_destination,
                                 "status": "error",
                                 "message": "Cannot overwrite: source and destination are different types (file/directory).",
-                            }
-                        )
+                            })
                         continue
 
                 # Move the item
@@ -128,8 +132,7 @@ def move_files(source_path, destination_path, overwrite=False):
                             "destination": item_destination,
                             "status": "success",
                             "message": f"{'Directory' if os.path.isdir(item_path) else 'File'} moved successfully.",
-                        }
-                    )
+                        })
                 except Exception as e:
                     results.append(
                         {
@@ -144,9 +147,13 @@ def move_files(source_path, destination_path, overwrite=False):
                 {
                     "results": results,
                     "total": len(matched_paths),
-                    "success": sum(1 for r in results if r["status"] == "success"),
+                    "success": sum(
+                        1 for r in results if r["status"] == "success"
+                    ),
                     "errors": sum(1 for r in results if r["status"] == "error"),
-                    "skipped": sum(1 for r in results if r["status"] == "skipped"),
+                    "skipped": sum(
+                        1 for r in results if r["status"] == "skipped"
+                    ),
                 }
             )
 
@@ -154,7 +161,9 @@ def move_files(source_path, destination_path, overwrite=False):
             # Single file or directory move (no wildcards)
             if not os.path.exists(abs_source_path):
                 return json.dumps(
-                    {"error": f"Source path '{abs_source_path}' does not exist."}
+                    {
+                        "error": f"Source path '{abs_source_path}' does not exist."
+                    }
                 )
 
             # Check if destination exists and handle accordingly
@@ -164,8 +173,7 @@ def move_files(source_path, destination_path, overwrite=False):
                         {
                             "warning": True,
                             "message": f"Destination '{abs_destination_path}' already exists and overwrite is False.",
-                        }
-                    )
+                        })
 
                 # If overwrite is True but destination is a directory and source is a file (or vice versa),
                 # we cannot overwrite without removing first
@@ -200,7 +208,9 @@ def move_files(source_path, destination_path, overwrite=False):
                     }
                 )
             except Exception as e:
-                return json.dumps({"error": f"Error moving file/directory: {str(e)}"})
+                return json.dumps(
+                    {"error": f"Error moving file/directory: {str(e)}"}
+                )
 
     except Exception as e:
         return json.dumps({"error": f"An unexpected error occurred: {str(e)}"})

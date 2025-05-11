@@ -27,27 +27,35 @@ class TermColors:
 
 def get_diff_for_proposed_changes(file_path: str, proposed_new_content: str):
     """
-    Calculates and returns a colored diff between a file's current content and proposed new content.
+    Calculates and returns a colored diff between a file's current content and
+    proposed new content.
     Args:
         file_path (str): The path to the file.
         proposed_new_content (str): The full proposed new content for the file.
     Returns:
         str: A JSON string containing the colored diff or an error message.
     """
-    print(
-        f"--- TOOL EXECUTING: get_diff_for_proposed_changes(file_path='{file_path}', proposed_content_length={len(proposed_new_content)}) ---"
-    )
+    log_msg = "--- TOOL EXECUTING: get_diff_for_proposed_changes"
+    log_msg += "(file_path='{}', ".format(file_path)
+    log_msg += "proposed_content_length={}) ---".format(
+        len(proposed_new_content))
+    print(log_msg)
+
     try:
         original_content = ""
         try:
             with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                 original_content = f.read()
         except FileNotFoundError:
-            # If the file doesn't exist, the diff will show the entire new content as additions
+            # If the file doesn't exist, the diff will show the entire new
+            # content as additions
             pass
         except Exception as e:
-            print(f"Warning: Could not read original file for diff ''{file_path}': {e}")
-            # Proceed with empty original_content to show full new content as diff
+            warn_msg = "Warning: Could not read original file for diff "
+            warn_msg += "'{}': {}".format(file_path, e)
+            print(warn_msg)
+            # Proceed with empty original_content to show full new content as
+            # diff
 
         original_lines = original_content.splitlines()
         proposed_lines = proposed_new_content.splitlines()
@@ -57,11 +65,17 @@ def get_diff_for_proposed_changes(file_path: str, proposed_new_content: str):
         colored_diff_lines = []
         for line in diff:
             if line.startswith("+"):
-                colored_diff_lines.append(f"{TermColors.GREEN}{line}{TermColors.RESET}")
+                colored_diff_lines.append(
+                    "{0}{1}{2}".format(TermColors.GREEN, line, TermColors.RESET)
+                )
             elif line.startswith("-"):
-                colored_diff_lines.append(f"{TermColors.RED}{line}{TermColors.RESET}")
+                colored_diff_lines.append(
+                    "{0}{1}{2}".format(TermColors.RED, line, TermColors.RESET)
+                )
             elif line.startswith("@"):
-                colored_diff_lines.append(f"{TermColors.CYAN}{line}{TermColors.RESET}")
+                colored_diff_lines.append(
+                    "{0}{1}{2}".format(TermColors.CYAN, line, TermColors.RESET)
+                )
             else:
                 colored_diff_lines.append(line)
 
@@ -81,9 +95,11 @@ def get_diff_for_proposed_changes(file_path: str, proposed_new_content: str):
         )
 
     except Exception as e:
-        print(f"Error in get_diff_for_proposed_changes: {e}")
+        print("Error in get_diff_for_proposed_changes: {}".format(e))
         traceback.print_exc()
-        return json.dumps({"error": str(e), "file_path": file_path, "status": "error"})
+        return json.dumps(
+            {"error": str(e), "file_path": file_path, "status": "error"}
+        )
 
 
 def get_tool_definition():
@@ -91,20 +107,27 @@ def get_tool_definition():
         "type": "function",
         "function": {
             "name": "get_diff_for_proposed_changes",
-            "description": "Compares proposed new content for a file with its current content on disk and returns a unified diff (colorized for terminal display). This helps visualize changes before they are written. Paths are relative to the current working directory.",
+            "description": "Compares proposed new content for a file with its current "
+                           "content on disk and returns a unified diff (colorized for "
+                           "terminal display). This helps visualize changes before they "
+                           "are written. Paths are relative to the current working "
+                           "directory.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "file_path": {
                         "type": "string",
-                        "description": "The relative path to the file being changed or created.",
+                        "description": "The relative path to the file being changed "
+                                       "or created.",
                     },
                     "proposed_new_content": {
                         "type": "string",
                         "description": "The full proposed new content for the file.",
                     },
                 },
-                "required": ["file_path", "proposed_new_content"],
+                "required": [
+                    "file_path",
+                    "proposed_new_content"],
             },
         },
     }

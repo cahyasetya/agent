@@ -37,8 +37,7 @@ def delete_directory(directory_path: str):
                     "error": "Access denied: Directory path is outside the allowed directory.",
                     "directory_path": directory_path,
                     "status": "error",
-                }
-            )
+                })
 
         if not os.path.exists(resolved_path):
             return json.dumps(
@@ -73,14 +72,17 @@ def delete_directory(directory_path: str):
                 "directory_path": directory_path,
                 "status": "success",
                 "message": f"Directory '{resolved_path}' and its contents deleted successfully.",
-            }
-        )
+            })
 
     except Exception as e:
         print(f"Error in delete_directory: {e}")
         traceback.print_exc()
         return json.dumps(
-            {"error": str(e), "directory_path": directory_path, "status": "error"}
+            {
+                "error": str(e),
+                "directory_path": directory_path,
+                "status": "error",
+            }
         )
 
 
@@ -96,8 +98,7 @@ def get_tool_definition():
                     "directory_path": {
                         "type": "string",
                         "description": "The relative path to the directory to delete. e.g., 'old_folder' or 'temp_data'",
-                    }
-                },
+                    }},
                 "required": ["directory_path"],
             },
         },

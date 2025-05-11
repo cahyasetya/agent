@@ -37,8 +37,7 @@ def create_directory(directory_path: str):
                     "error": "Access denied: Directory path is outside the allowed directory.",
                     "directory_path": directory_path,
                     "status": "error",
-                }
-            )
+                })
 
         if os.path.exists(resolved_path) and os.path.isdir(resolved_path):
             return json.dumps(
@@ -54,8 +53,7 @@ def create_directory(directory_path: str):
                     "directory_path": directory_path,
                     "status": "error",
                     "message": f"Error: A file with the name '{resolved_path}' already exists.",
-                }
-            )
+                })
 
         os.makedirs(resolved_path, exist_ok=True)
         return json.dumps(
@@ -63,14 +61,17 @@ def create_directory(directory_path: str):
                 "directory_path": directory_path,
                 "status": "created",
                 "message": f"Directory '{resolved_path}' created successfully or already existed.",
-            }
-        )
+            })
 
     except Exception as e:
         print(f"Error in create_directory: {e}")
         traceback.print_exc()
         return json.dumps(
-            {"error": str(e), "directory_path": directory_path, "status": "error"}
+            {
+                "error": str(e),
+                "directory_path": directory_path,
+                "status": "error",
+            }
         )
 
 
@@ -86,8 +87,7 @@ def get_tool_definition():
                     "directory_path": {
                         "type": "string",
                         "description": "The relative path for the new directory. e.g., 'new_folder' or 'data/archive'",
-                    }
-                },
+                    }},
                 "required": ["directory_path"],
             },
         },

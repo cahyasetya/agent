@@ -27,20 +27,23 @@ def read_file_content(file_path: str):
         resolved_path = os.path.abspath(os.path.join(base_dir, file_path))
 
         if not resolved_path.startswith(base_dir):
-            print(
-                f"Security Alert: Attempt to read file '{resolved_path}' outside of base directory '{base_dir}'."
-            )
+            alert_msg = "Security Alert: Attempt to read file "
+            alert_msg += f"'{resolved_path}' outside of base directory '{base_dir}'."
+            print(alert_msg)
             return json.dumps(
                 {
                     "error": "Access denied: File path is outside the allowed directory.",
                     "file_path": file_path,
                     "status": "error",
-                }
-            )
+                })
 
         if not os.path.exists(resolved_path):
             return json.dumps(
-                {"error": "File not found.", "file_path": file_path, "status": "error"}
+                {
+                    "error": "File not found.",
+                    "file_path": file_path,
+                    "status": "error",
+                }
             )
         if not os.path.isfile(resolved_path):
             return json.dumps(
@@ -53,9 +56,9 @@ def read_file_content(file_path: str):
 
         file_size = os.path.getsize(resolved_path)
         if file_size > MAX_FILE_SIZE_WARN:
-            print(
-                f"Warning: File '{resolved_path}' is large ({file_size / (1024):.2f} KB). Reading entire content."
-            )
+            warn_msg = f"Warning: File '{resolved_path}' is large "
+            warn_msg += f"({file_size / (1024):.2f} KB). Reading entire content."
+            print(warn_msg)
 
         with open(resolved_path, "r", encoding="utf-8", errors="ignore") as f:
             content = f.read()
@@ -63,7 +66,11 @@ def read_file_content(file_path: str):
         content_to_return = content  # No truncation
 
         return json.dumps(
-            {"file_path": file_path, "content": content_to_return, "status": "success"}
+            {
+                "file_path": file_path,
+                "content": content_to_return,
+                "status": "success",
+            }
         )
 
     except FileNotFoundError:
@@ -77,7 +84,9 @@ def read_file_content(file_path: str):
     except Exception as e:
         print(f"Error in read_file_content: {e}")
         traceback.print_exc()
-        return json.dumps({"error": str(e), "file_path": file_path, "status": "error"})
+        return json.dumps(
+            {"error": str(e), "file_path": file_path, "status": "error"}
+        )
 
 
 def get_tool_definition():
@@ -85,15 +94,16 @@ def get_tool_definition():
         "type": "function",
         "function": {
             "name": "read_file_content",
-            "description": "Reads and returns the content of a specified text file. File paths are relative to the current working directory.",
+            "description": "Reads and returns the content of a specified text file. "
+            "File paths are relative to the current working directory.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "file_path": {
                         "type": "string",
-                        "description": "The relative path to the file to be read. e.g., 'document.txt' or 'folder/data.csv'",
-                    }
-                },
+                        "description": "The relative path to the file to be read. "
+                        "e.g., 'document.txt' or 'folder/data.csv'",
+                    }},
                 "required": ["file_path"],
             },
         },

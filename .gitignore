@@ -25,3 +25,4 @@ env/
 *.swp
 
 .agent_history
+.flake8_result.txt

@@ -38,7 +38,9 @@ def list_directory_contents(directory_path: str = "."):
             )
 
         if not os.path.exists(resolved_path):
-            return json.dumps({"error": "Directory not found.", "path": resolved_path})
+            return json.dumps(
+                {"error": "Directory not found.", "path": resolved_path}
+            )
         if not os.path.isdir(resolved_path):
             return json.dumps(
                 {
@@ -63,7 +65,9 @@ def list_directory_contents(directory_path: str = "."):
                 }
             )
 
-        return json.dumps({"path": directory_path, "contents": detailed_contents})
+        return json.dumps(
+            {"path": directory_path, "contents": detailed_contents}
+        )
 
     except Exception as e:
         print(f"Error in list_directory_contents: {e}")
@@ -83,8 +87,7 @@ def get_tool_definition():
                     "directory_path": {
                         "type": "string",
                         "description": "The path to the directory to inspect. e.g., '.', 'example_dir'",
-                    }
-                },
+                    }},
                 "required": ["directory_path"],
             },
         },

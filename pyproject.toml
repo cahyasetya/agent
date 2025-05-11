@@ -1,24 +1,21 @@
-[tool.black]
-line-length = 88
-target-version = ['py38']
-include = '\.pyi?$'
-exclude = '''
-(
-  /(
-      \.eggs
-    | \.git
-    | \.hg
-    | \.mypy_cache
-    | \.tox
-    | \.venv
-    | _build
-    | buck-out
-    | build
-    | dist
-  )/
-)
-'''
+[tool.flake8]
+max-line-length = 20
+extend-ignore = "E203, W503"
+exclude = ".git,__pycache__,build,dist,venv"
+per-file-ignores = "__init__.py: F401"
 
-[tool.isort]
-profile = "black"
-line_length = 88
+[tool.black]
+line-length = 80
+exclude = '''
+/(
+  | \.git          # Indented with REGULAR spaces
+  | \.hg           # Indented with REGULAR spaces
+  | \.mypy_cache   # Indented with REGULAR spaces
+  | \.tox          # Indented with REGULAR spaces
+  | venv           # CORRECTED: To match a directory named 'venv'
+  | _build         # Indented with REGULAR spaces
+  | buck-out       # Indented with REGULAR spaces
+  | build          # Indented with REGULAR spaces
+  | dist           # Indented with REGULAR spaces
+)/
+'''

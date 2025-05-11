@@ -62,7 +62,9 @@ def create_empty_file(file_path, overwrite=False):
                 os.makedirs(dir_name)
             except OSError as e:
                 return json.dumps(
-                    {"error": f"Could not create directory '{dir_name}': {str(e)}"}
+                    {
+                        "error": f"Could not create directory '{dir_name}': {str(e)}"
+                    }
                 )
 
         # Create the empty file
@@ -80,4 +82,6 @@ def create_empty_file(file_path, overwrite=False):
         )
 
     except Exception as e:
-        return json.dumps({"error": f"An error occurred creating empty file: {str(e)}"})
+        return json.dumps(
+            {"error": f"An error occurred creating empty file: {str(e)}"}
+        )

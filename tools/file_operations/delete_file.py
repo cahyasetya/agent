@@ -34,8 +34,7 @@ def delete_file(file_path: str):
                     "error": "Access denied: File path is outside the allowed directory.",
                     "file_path": file_path,
                     "status": "error",
-                }
-            )
+                })
 
         if not os.path.exists(resolved_path):
             return json.dumps(
@@ -66,7 +65,9 @@ def delete_file(file_path: str):
     except Exception as e:
         print(f"Error in delete_file: {e}")
         traceback.print_exc()
-        return json.dumps({"error": str(e), "file_path": file_path, "status": "error"})
+        return json.dumps(
+            {"error": str(e), "file_path": file_path, "status": "error"}
+        )
 
 
 def get_tool_definition():
@@ -81,8 +82,7 @@ def get_tool_definition():
                     "file_path": {
                         "type": "string",
                         "description": "The relative path to the file to delete. e.g., 'old_document.txt' or 'temp/data.bak'",
-                    }
-                },
+                    }},
                 "required": ["file_path"],
             },
         },

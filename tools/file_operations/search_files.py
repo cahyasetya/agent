@@ -35,7 +35,9 @@ def search_files(search_path: str = ".", file_pattern: str = "*"):
             )
 
         base_dir = os.getcwd()
-        resolved_search_path = os.path.abspath(os.path.join(base_dir, search_path))
+        resolved_search_path = os.path.abspath(
+            os.path.join(base_dir, search_path)
+        )
 
         if not resolved_search_path.startswith(base_dir):
             print(
@@ -46,8 +48,7 @@ def search_files(search_path: str = ".", file_pattern: str = "*"):
                     "error": "Access denied: Search path is outside the allowed directory.",
                     "search_path": search_path,
                     "status": "error",
-                }
-            )
+                })
 
         if not os.path.isdir(resolved_search_path):
             return json.dumps(
@@ -66,7 +67,9 @@ def search_files(search_path: str = ".", file_pattern: str = "*"):
                         os.path.join(root, filename), resolved_search_path
                     )
                     found_files.append(
-                        os.path.join(search_path, relative_file_path).replace("\\", "/")
+                        os.path.join(search_path, relative_file_path).replace(
+                            "\\", "/"
+                        )
                     )
 
         if not found_files:

@@ -12,8 +12,8 @@ colorama.init(autoreset=True)
 class TermColors:
     RED = colorama.Fore.RED
     GREEN = colorama.Fore.GREEN
-    RESET = colorama.Style.RESET_ALL  # colorama's way to reset
-    YELLOW = colorama.Fore.YELLOW  # For hunk headers, if desired
+    RESET = colorama.Style.RESET_ALL
+    YELLOW = colorama.Fore.YELLOW
     # BLUE = colorama.Fore.BLUE   # For file names in diff, if desired
 
 
@@ -22,8 +22,10 @@ OPEN_ROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_API_BASE = "https://openrouter.ai/api/v1"
 LLM_MODEL = "google/gemini-2.5-flash-preview"
 
+
 # Context Management Configuration
 # Keeps the system prompt + this many recent user/assistant/tool messages.
 # Adjust based on typical message size and model context limit.
 # Each "item" is one message object in the list.
-MAX_HISTORY_ITEMS = 30  # e.g., roughly 10-15 full turns (user+assistant or user+assistant+tool+assistant)
+MAX_HISTORY_ITEMS = 30
+# (user+assistant or user+assistant+tool+assistant)

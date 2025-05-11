@@ -1,3 +1,4 @@
+import argparse  # Added for command-line arguments
 import importlib.util
 import json
 import os
@@ -6,11 +7,9 @@ import traceback
 from typing import List  # Only keep what we actually use
 
 import requests
-
 # Import for prompt_toolkit
 from prompt_toolkit import PromptSession
 from prompt_toolkit.history import FileHistory
-
 # We'll use direct API calls instead of the OpenAI client
 from rich.console import Console
 from rich.markdown import Markdown
@@ -22,12 +21,12 @@ from rich.theme import Theme
 
 from tools.file_operations.create_empty_file import create_empty_file
 from tools.file_operations.move_files import move_files
-
 # Import tool functions from reorganized directories
 from tools.file_operations.read_file_content import read_file_content
 from tools.file_operations.write_to_file import write_to_file
 
-# Other tools will be imported dynamically through the directory scanning mechanism
+# Other tools will be imported dynamically through the directory scanning
+# mechanism
 
 # --- Rich Console Setup for Colorful Output ---
 custom_theme = Theme(
@@ -53,7 +52,7 @@ OPENROUTER_API_BASE = "https://openrouter.ai/api/v1"
 LLM_MODEL = "google/gemini-2.5-flash-preview"
 
 # Context Management Configuration
-MAX_HISTORY_ITEMS = 30  # Keep this many recent messages plus system prompt
+MAX_HISTORY_ITEMS = 15  # Keep this many recent messages plus system prompt
 HISTORY_FILE = ".agent_history"
 
 
@@ -69,9 +68,9 @@ def prune_messages(messages_list: List[dict], max_items: int) -> List[dict]:
     recent_messages = messages_list[-max_items:]
 
     pruned_list = system_prompt + recent_messages
-    console.print(
-        f"[info]--- Context Pruning: Reduced message history from {len(messages_list)} to {len(pruned_list)} items. ---[/info]"
-    )
+    msg = "[info]--- Context Pruning: Reduced message history from "
+    msg += f"{len(messages_list)} to {len(pruned_list)} items. ---[/info]"
+    console.print(msg)
     return pruned_list
 
 
@@ -97,7 +96,9 @@ def call_openrouter_api(messages, model, tools=None, tool_choice=None):
         payload["tool_choice"] = tool_choice
 
     try:
-        response = requests.post(endpoint, headers=headers, json=payload, timeout=90)
+        response = requests.post(
+            endpoint, headers=headers, json=payload, timeout=90
+        )
 
         response.raise_for_status()
         return response.json()
@@ -109,24 +110,29 @@ def call_openrouter_api(messages, model, tools=None, tool_choice=None):
                 error_body = e.response.json()
                 console.print(f"[error]Error details: {error_body}[/error]")
             except Exception as json_err:
-                console.print(f"[error]Error parsing response: {json_err}[/error]")
-                console.print(
-                    f"[error]Error status code: {e.response.status_code}[/error]"
-                )
-                console.print(f"[error]Error text: {e.response.text}[/error]")
+                err_msg = f"[error]Error parsing response: {json_err}[/error]"
+                console.print(err_msg)
+                status_msg = "[error]Error status code: "
+                status_msg += f"{e.response.status_code}[/error]"
+                console.print(status_msg)
+                err_text = f"[error]Error text: {e.response.text}[/error]"
+                console.print(err_text)
         raise e
 
 
 # --- Dynamic Tool Discovery and Loading ---
 def find_all_tool_modules():
-    """Scan all subdirectories in the tools directory for Python modules with get_tool_definition"""
+    """
+    Scan all subdirectories in the tools directory for Python modules with
+    get_tool_definition
+    """
     all_tool_modules = {}
     tools_dir = "tools"
 
     if not os.path.exists(tools_dir):
-        console.print(
-            f"[warning]Warning: Tools directory '{tools_dir}' not found.[/warning]"
-        )
+        warning_msg = "[warning]Warning: Tools directory '"
+        warning_msg += f"{tools_dir}' not found.[/warning]"
+        console.print(warning_msg)
         return all_tool_modules
 
     # First, add tools directory itself to sys.path
@@ -142,9 +148,8 @@ def find_all_tool_modules():
             item_path = os.path.join(directory, item)
 
             # If it's a directory with __init__.py, explore it recursively
-            if os.path.isdir(item_path) and os.path.exists(
-                os.path.join(item_path, "__init__.py")
-            ):
+            init_path = os.path.join(item_path, "__init__.py")
+            if os.path.isdir(item_path) and os.path.exists(init_path):
                 # Recursively explore the subdirectory and add its modules
                 sub_modules = explore_dir(item_path)
                 modules_found.update(sub_modules)
@@ -158,23 +163,27 @@ def find_all_tool_modules():
                 rel_path = os.path.relpath(
                     os.path.dirname(item_path), start=os.getcwd()
                 )
-                full_module_path = f"{rel_path.replace(os.path.sep, '.')}.{module_name}"
+                full_module_path = (
+                    f"{rel_path.replace(os.path.sep, '.')}.{module_name}"
+                )
 
                 try:
                     # Use importlib to import the module
                     module = importlib.import_module(full_module_path)
 
                     # Check if it has the get_tool_definition function
-                    if hasattr(module, "get_tool_definition") and callable(
-                        module.get_tool_definition
-                    ):
-                        # Store the module with its function name for later access
+                    has_tool_def = (hasattr(module, "get_tool_definition") and
+                                    callable(module.get_tool_definition))
+                    if has_tool_def:
+                        # Store the module with its function name for later
                         function_name = None
 
-                        # Try to determine the function name from the tool definition
+                        # Try to determine the function name from the tool def
                         try:
                             tool_def = module.get_tool_definition()
-                            if isinstance(tool_def, dict) and "function" in tool_def:
+                            is_tool_dict = (isinstance(tool_def, dict) and
+                                            "function" in tool_def)
+                            if is_tool_dict:
                                 function_name = tool_def["function"].get("name")
                         except Exception:
                             pass
@@ -183,11 +192,14 @@ def find_all_tool_modules():
                         if not function_name:
                             function_name = module_name
 
-                        modules_found[function_name] = (module, full_module_path)
+                        modules_found[function_name] = (
+                            module,
+                            full_module_path,
+                        )
                 except Exception as e:
-                    console.print(
-                        f"[warning]Could not load module {full_module_path}: {e}[/warning]"
-                    )
+                    warning_msg = "[warning]Could not load module "
+                    warning_msg += f"{full_module_path}: {e}[/warning]"
+                    console.print(warning_msg)
 
         return modules_found
 
@@ -209,33 +221,35 @@ def get_tool_definitions():
 
     for function_name, (module, module_path) in tool_modules.items():
         try:
-            if hasattr(module, "get_tool_definition") and callable(
-                module.get_tool_definition
-            ):
+            has_tool_def = (hasattr(module, "get_tool_definition") and
+                            callable(module.get_tool_definition))
+            if has_tool_def:
                 tool_def = module.get_tool_definition()
                 # Add to list in appropriate format
                 if isinstance(tool_def, list):
                     tool_definitions.extend(tool_def)
                 else:
                     tool_definitions.append(tool_def)
-                console.print(
-                    f"[success]Loaded tool definition for '{function_name}' from {module_path}[/success]"
-                )
+                success_msg = "[success]Loaded tool definition for "
+                success_msg += f"'{function_name}' from {module_path}[/success]"
+                console.print(success_msg)
             else:
-                console.print(
-                    f"[warning]Module {module_path} has no get_tool_definition function[/warning]"
-                )
+                warning_msg = "[warning]Module {0} has no ".format(module_path)
+                warning_msg += "get_tool_definition function[/warning]"
+                console.print(warning_msg)
         except Exception as e:
-            console.print(
-                f"[error]Error loading tool definition from {module_path}: {e}[/error]"
-            )
+            error_msg = "[error]Error loading tool definition from "
+            error_msg += f"{module_path}: {e}[/error]"
+            console.print(error_msg)
             traceback.print_exc()
 
     return tool_definitions
 
 
 def get_available_functions():
-    """Create a dictionary mapping function names to their callable implementations"""
+    """
+    Create a dictionary mapping function names to their callable implementations
+    """
     available_functions = {}
     tool_modules = find_all_tool_modules()
 
@@ -252,7 +266,9 @@ def get_available_functions():
     # Then add dynamically discovered functions
     for function_name, (module, _) in tool_modules.items():
         # Check if the module has a function with the same name as the tool
-        if hasattr(module, function_name) and callable(getattr(module, function_name)):
+        if hasattr(module, function_name) and callable(
+            getattr(module, function_name)
+        ):
             available_functions[function_name] = getattr(module, function_name)
 
     return available_functions
@@ -288,7 +304,9 @@ def display_available_tools():
         if isinstance(tool_def, dict) and "function" in tool_def:
             function_def = tool_def["function"]
             name = function_def.get("name", "Unknown")
-            description = function_def.get("description", "No description available")
+            description = function_def.get(
+                "description", "No description available"
+            )
 
             # Categorize based on module path
             if "file_operations" in str(tool_def):
@@ -315,20 +333,66 @@ def display_available_tools():
 
 # --- Main Application Logic ---
 if __name__ == "__main__":
+    # --- Argument Parsing ---
+    parser = argparse.ArgumentParser(
+        description="File System Agent with AI Assistance."
+    )
+    parser.add_argument(
+        "--path",
+        type=str,
+        help="Optional path to a directory for the AI to focus on.",
+        default=None,
+    )
+    args = parser.parse_args()
+    focus_path = args.path
+
     # Display a fancy logo
     display_logo()
 
     if not OPEN_ROUTER_API_KEY:
-        console.print(
-            "[error]Error: OPENROUTER_API_KEY environment variable is not set.[/error]"
-        )
+        error_msg = "[error]Error: OPENROUTER_API_KEY environment variable "
+        error_msg += "is not set.[/error]"
+        console.print(error_msg)
         exit(1)
+
+    welcome_message = (
+        "Starting interactive chat with OpenRouter assistant\n"
+        "Type '[command]exit[/command]' or '[command]quit[/command]' to end "
+        "the session\n"
+        "File/directory paths for tools are relative to where this script is run")
+    if focus_path:
+        # Ensure the path is absolute for clarity in the prompt
+        abs_focus_path = (
+            os.path.abspath(focus_path)
+            if not os.path.isabs(focus_path)
+            else focus_path
+        )
+        if os.path.isdir(abs_focus_path):
+            info_msg = "\n[info]AI will focus on operations within or related to: "
+            info_msg += f"{abs_focus_path}[/info]"
+            welcome_message += info_msg
+
+            focus_dir_msg = "Focusing on directory: [bold cyan]{0}".format(
+                abs_focus_path)
+            focus_dir_msg += "[/bold cyan]"
+            console.print(
+                Panel.fit(
+                    focus_dir_msg,
+                    title="🎯 Target Directory",
+                    border_style="green",
+                    padding=(0, 1),
+                )
+            )
+        else:
+            warning_msg = "[warning]Warning: The provided path '{0}' ".format(
+                focus_path)
+            warning_msg += "is not a valid directory. It will be ignored.[/warning]"
+            console.print(warning_msg)
+            focus_path = None  # Reset if not a valid directory
 
     console.print(
         Panel.fit(
-            "Starting interactive chat with OpenRouter assistant\n"
-            "Type '[command]exit[/command]' or '[command]quit[/command]' to end the session\n"
-            "File/directory paths for tools are relative to where this script is run",
+            welcome_message,
             title="🚀 Welcome",
             border_style="bright_blue",
         )
@@ -340,27 +404,59 @@ if __name__ == "__main__":
     # System prompt - shortened slightly to avoid line length issues
     system_content = (
         "You are a helpful assistant for refactoring and managing files. "
-        "You can use tools to list directory contents, read files, write content to files, "
-        "create empty files, create directories, search for files, or get a diff of proposed changes to a file if needed. "
-        "You also have tools to delete files and directories, and move files (with wildcard support). "
+        "You can use tools to list directory contents, read files, write content "
+        "to files, create empty files, create directories, search for files, or "
+        "get a diff of proposed changes to a file if needed. "
+        "You also have tools to delete files and directories, and move files "
+        "(with wildcard support). "
         "Paths are relative to the script's current working directory. "
         "Maintain context from previous turns to understand follow-up questions. "
         "\n\nRefactoring/Editing Workflow (VERY IMPORTANT):\n"
-        "1. When asked to modify or refactor an existing file, first use `read_file_content` to get its current, full content.\n"
-        "2. Based on the user's request, formulate the complete, new, full content of the file as it should be after the changes. This means the entire file, not just the changed parts.\n"
-        "3. Then, use the `get_diff_for_proposed_changes` tool. Provide it with the original `file_path` and your complete, new, full `proposed_new_content`.\n"
-        "4. Present the diff generated by the tool to the user for review. The diff will be colorized (green for additions, red for deletions) for easier reading in the terminal.\n"
-        "5. After presenting the diff, wait for the user's feedback. If the user rejects the changes or asks for different modifications, engage in a dialogue to understand their requirements and, if necessary, repeat steps 2-4.\n"
-        "6. If the user confirms the changes (e.g., by saying 'yes', 'proceed', 'apply changes'), then and only then, use the `write_to_file` tool.\n"
-        "Do not write only partial changes or just function signatures unless that is the entirety of the intended new file content. If creating a new file, the diff step can show the entire content as new.\n"
+        "1. When asked to modify or refactor an existing file, first use "
+        "`read_file_content` to get its current, full content.\n"
+        "2. Based on the user's request, formulate the complete, new, full content "
+        "of the file as it should be after the changes. This means the entire file, "
+        "not just the changed parts.\n"
+        "3. Then, use the `get_diff_for_proposed_changes` tool. Provide it with the "
+        "original `file_path` and your complete, new, full `proposed_new_content`.\n"
+        "4. Present the diff generated by the tool to the user for review. The diff "
+        "will be colorized (green for additions, red for deletions) for easier "
+        "reading in the terminal.\n"
+        "5. After presenting the diff, wait for the user's feedback. If the user "
+        "rejects the changes or asks for different modifications, engage in a "
+        "dialogue to understand their requirements and, if necessary, repeat "
+        "steps 2-4.\n"
+        "6. If the user confirms the changes (e.g., by saying 'yes', 'proceed', "
+        "'apply changes'), then and only then, use the `write_to_file` tool.\n"
+        "Do not write only partial changes or just function signatures unless that "
+        "is the entirety of the intended new file content. If creating a new file, "
+        "the diff step can show the entire content as new.\n"
         "\n\nFile Movement and Organization:\n"
-        "You can use the `move_files` tool to move files or directories, including with wildcard patterns like *.py or data/*.csv. "
-        "Be careful when using wildcards and always confirm with the user before executing operations that might affect multiple files.\n"
+        "You can use the `move_files` tool to move files or directories, including "
+        "with wildcard patterns like *.py or data/*.csv. "
+        "Be careful when using wildcards and always confirm with the user before "
+        "executing operations that might affect multiple files.\n"
         "\n\nRich Output Support:\n"
-        "You can use the `rich_output` tool to format your responses with syntax highlighting, markdown rendering, and panels with borders.\n"
+        "You can use the `rich_output` tool to format your responses with syntax "
+        "highlighting, markdown rendering, and panels with borders.\n"
         "\n\nSyntax Highlighting:\n"
-        "You can use the `syntax_highlight` tool to show the content of code files with proper syntax highlighting."
-    )
+        "You can use the `syntax_highlight` tool to show the content of code files "
+        "with proper syntax highlighting. Code width should be 80")
+
+    if focus_path:
+        abs_focus_path = os.path.abspath(
+            focus_path
+        )  # Already checked if it's a dir
+        context_msg = (
+            f"\n\nIMPORTANT CONTEXT: The user has specified a focus directory for "
+            f"this session: '{abs_focus_path}'. "
+            "Please prioritize operations, suggestions, and file paths within or "
+            "relative to this directory unless explicitly told otherwise. When "
+            "providing file paths in your responses or tool arguments, use paths "
+            "relative to the script's current working directory, but keep in mind "
+            "this focus directory. If a user refers to 'this directory' or 'the "
+            "project folder', assume they mean this focus directory.")
+        system_content += context_msg
 
     messages = [{"role": "system", "content": system_content}]
 
@@ -405,24 +501,27 @@ if __name__ == "__main__":
                     tool_choice="auto",
                 )
 
-            if not (
+            has_valid_response = (
                 response_obj
                 and "choices" in response_obj
                 and len(response_obj["choices"]) > 0
-            ):
-                console.print(
-                    "[error]Error: Invalid or empty response from API on initial call.[/error]"
-                )
-                console.print(f"[error]Response object: {response_obj}[/error]")
+            )
+            if not has_valid_response:
+                error_msg = "[error]Error: Invalid or empty response from API "
+                error_msg += "on initial call.[/error]"
+                console.print(error_msg)
+                console.print("[error]Response object: {0}[/error]".format(
+                    response_obj))
                 messages.pop()
                 continue
 
             response_choice = response_obj["choices"][0]
             if "message" not in response_choice:
-                console.print(
-                    "[error]Error: API response's first choice has no message.[/error]"
-                )
-                console.print(f"[error]Response choice: {response_choice}[/error]")
+                error_msg = "[error]Error: API response's first choice has no "
+                error_msg += "message.[/error]"
+                console.print(error_msg)
+                console.print("[error]Response choice: {0}[/error]".format(
+                    response_choice))
                 messages.pop()
                 continue
 
@@ -459,10 +558,12 @@ if __name__ == "__main__":
                         tool_table.add_column("", style="bright_yellow")
                         tool_table.add_column("", style="bright_white")
                         tool_table.add_row(
-                            "Function:", f"[command]{function_name}[/command]"
+                            "Function:", "[command]{0}[/command]".format(
+                                function_name)
                         )
 
-                        # Format the JSON arguments nicely with syntax highlighting
+                        # Format the JSON arguments nicely with syntax
+                        # highlighting
                         function_args_syntax = Syntax(
                             function_args_str,
                             "json",
@@ -477,32 +578,42 @@ if __name__ == "__main__":
                         try:
                             function_args = json.loads(function_args_str)
                         except json.JSONDecodeError as e:
-                            console.print(
-                                f"[error]Error decoding JSON arguments: {e}[/error]"
-                            )
-                            console.print(
-                                f"[error]Problematic string: {function_args_str}[/error]"
-                            )
+                            error_msg = "[error]Error decoding JSON arguments: "
+                            error_msg += "{0}[/error]".format(e)
+                            console.print(error_msg)
+                            error_str = "[error]Problematic string: "
+                            error_str += "{0}[/error]".format(function_args_str)
+                            console.print(error_str)
                             tool_result = json.dumps(
-                                {"error": "Invalid arguments format received from LLM."}
+                                {
+                                    "error": "Invalid arguments format received "
+                                    "from LLM."
+                                }
                             )
                         else:
                             with Progress(
                                 SpinnerColumn(),
-                                TextColumn(f"[tool]Running {function_name}...[/tool]"),
+                                TextColumn(
+                                    "[tool]Running {0}...[/tool]".format(
+                                        function_name)
+                                ),
                                 transient=True,
                             ) as progress:
                                 task = progress.add_task("running", total=None)
                                 tool_result = function_to_call(**function_args)
 
                             if not isinstance(tool_result, str):
-                                console.print(
-                                    f"[warning]Warning: Tool '{function_name}' did not return a string. Converting to JSON string.[/warning]"
-                                )
+                                warning_msg = "[warning]Warning: Tool "
+                                warning_msg += "'{0}' did not return ".format(
+                                    function_name)
+                                warning_msg += "a string. Converting to JSON "
+                                warning_msg += "string.[/warning]"
+                                console.print(warning_msg)
                                 tool_result = json.dumps(
                                     {
                                         "output": tool_result,
-                                        "warning": "Tool function did not return a string.",
+                                        "warning": "Tool function did not return "
+                                        "a string.",
                                     }
                                 )
 
@@ -515,7 +626,8 @@ if __name__ == "__main__":
                                 line_numbers=False,
                                 word_wrap=True,
                             ),
-                            title=f"[tool]Tool Result: {function_name}[/tool]",
+                            title="[tool]Tool Result: {0}[/tool]".format(
+                                function_name),
                             border_style="bright_yellow",
                             expand=False,
                         )
@@ -531,9 +643,11 @@ if __name__ == "__main__":
                             }
                         )
                     else:
-                        console.print(
-                            f"[error]Error: Unknown function '{function_name}' requested by the LLM.[/error]"
-                        )
+                        error_msg = "[error]Error: Unknown function "
+                        error_msg += "'{0}' requested by the LLM.".format(
+                            function_name)
+                        error_msg += "[/error]"
+                        console.print(error_msg)
                         messages.append(
                             {
                                 "tool_call_id": tool_call.get("id", ""),
@@ -541,7 +655,9 @@ if __name__ == "__main__":
                                 "name": function_name,
                                 "content": json.dumps(
                                     {
-                                        "error": f"Function '{function_name}' not found by the client application."
+                                        "error": "Function '{0}' ".format(
+                                            function_name)
+                                        + "not found by the client application."
                                     }
                                 ),
                             }
@@ -549,10 +665,10 @@ if __name__ == "__main__":
 
                 console.print(
                     Panel(
-                        "[system]Sending tool response(s) back to LLM for next step...[/system]",
+                        "[system]Sending tool response(s) back to LLM for next "
+                        "step...[/system]",
                         border_style="bright_blue",
-                    )
-                )
+                    ))
                 messages_for_api_tool_response = prune_messages(
                     list(messages), MAX_HISTORY_ITEMS
                 )
@@ -560,7 +676,8 @@ if __name__ == "__main__":
                 with Progress(
                     SpinnerColumn(),
                     TextColumn(
-                        "[system]Waiting for LLM response after tool call...[/system]"
+                        "[system]Waiting for LLM response after tool call..."
+                        "[/system]"
                     ),
                     transient=True,
                 ) as progress:
@@ -569,27 +686,30 @@ if __name__ == "__main__":
                         messages=messages_for_api_tool_response, model=LLM_MODEL
                     )
 
-                if not (
+                has_valid_response = (
                     response_after_tool_obj
                     and "choices" in response_after_tool_obj
                     and len(response_after_tool_obj["choices"]) > 0
-                ):
-                    console.print(
-                        "[error]Error: Invalid or empty response from API after sending tool results.[/error]"
-                    )
-                    console.print(
-                        f"[error]Response object: {response_after_tool_obj}[/error]"
-                    )
+                )
+                if not has_valid_response:
+                    error_msg = "[error]Error: Invalid or empty response from "
+                    error_msg += "API after sending tool results.[/error]"
+                    console.print(error_msg)
+                    resp_error = "[error]Response object: "
+                    resp_error += "{0}[/error]".format(response_after_tool_obj)
+                    console.print(resp_error)
                     tool_calls = None
                     response_message = None
                     break
 
                 response_choice = response_after_tool_obj["choices"][0]
                 if "message" not in response_choice:
-                    console.print(
-                        "[error]Error: API response's first choice (after tool call) has no message.[/error]"
-                    )
-                    console.print(f"[error]Response choice: {response_choice}[/error]")
+                    error_msg = "[error]Error: API response's first choice "
+                    error_msg += "(after tool call) has no message.[/error]"
+                    console.print(error_msg)
+                    resp_error = "[error]Response choice: "
+                    resp_error += "{0}[/error]".format(response_choice)
+                    console.print(resp_error)
                     tool_calls = None
                     break
 
@@ -602,12 +722,13 @@ if __name__ == "__main__":
                 tool_calls = response_message.get("tool_calls", None)
 
             console.print("\n[assistant]Assistant:[/assistant]")
-            if (
+            has_content = (
                 response_message
                 and "content" in response_message
                 and response_message["content"]
-            ):
-                # Check if the response contains markdown or code blocks and render them
+            )
+            if has_content:
+                # Check if the response contains markdown or code blocks
                 if "```" in response_message["content"]:
                     # Process and render markdown with code blocks
                     md = Markdown(response_message["content"])
@@ -616,19 +737,20 @@ if __name__ == "__main__":
                     # Regular text response
                     console.print(response_message["content"])
             else:
-                console.print(
-                    "[warning](LLM provided no further text content for this turn, or an error occurred preventing a final message)[/warning]"
-                )
+                warning_msg = "[warning](LLM provided no further text content "
+                warning_msg += "for this turn, or an error occurred preventing "
+                warning_msg += "a final message)[/warning]"
+                console.print(warning_msg)
 
         except Exception as e:
-            console.print(
-                f"[error]An unexpected error occurred during interaction: {e}[/error]"
-            )
+            error_msg = "[error]An unexpected error occurred during "
+            error_msg += "interaction: {0}[/error]".format(e)
+            console.print(error_msg)
             traceback.print_exc()
             if messages and messages[-1]["role"] == "user":
-                console.print(
-                    "[warning]--- Popping last user message due to API error to prevent re-submission. ---[/warning]"
-                )
+                warning_msg = "[warning]--- Popping last user message due to "
+                warning_msg += "API error to prevent re-submission. ---[/warning]"
+                console.print(warning_msg)
                 messages.pop()
 
         console.rule(style="bright_blue")

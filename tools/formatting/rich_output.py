@@ -21,12 +21,14 @@ def get_tool_definition():
                     },
                     "format_type": {
                         "type": "string",
-                        "description": "The format type: 'code', 'markdown', 'panel', or 'syntax'",
+                        "description": "The format type: 'code', 'markdown', 'panel', "
+                                       "or 'syntax'",
                         "enum": ["code", "markdown", "panel", "syntax"],
                     },
                     "language": {
                         "type": "string",
-                        "description": "Programming language for syntax highlighting (python, javascript, etc.)",
+                        "description": "Programming language for syntax highlighting "
+                                       "(python, javascript, etc.)",
                         "default": "python",
                     },
                     "title": {
@@ -60,13 +62,19 @@ def rich_output(content, format_type, language="python", title=""):
         # Create a string buffer by recording console output
         with console.capture() as capture:
             if format_type == "code" or format_type == "syntax":
-                syntax = Syntax(content, language, line_numbers=True, theme="monokai")
+                syntax = Syntax(
+                    content, language, line_numbers=True, theme="monokai"
+                )
                 console.print(syntax)
             elif format_type == "markdown":
                 md = Markdown(content)
                 console.print(md)
             elif format_type == "panel":
-                panel = Panel(content, title=title, border_style="bright_blue")
+                panel = Panel(
+                    content,
+                    title=title,
+                    border_style="bright_blue"
+                )
                 console.print(panel)
             else:
                 console.print(content)
@@ -77,4 +85,6 @@ def rich_output(content, format_type, language="python", title=""):
         return json.dumps({"formatted_output": output})
 
     except Exception as e:
-        return json.dumps({"error": f"Error formatting output: {str(e)}"})
+        return json.dumps(
+            {"error": "Error formatting output: {}".format(str(e))}
+        )
