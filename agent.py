@@ -52,7 +52,7 @@ OPENROUTER_API_BASE = "https://openrouter.ai/api/v1"
 LLM_MODEL = "google/gemini-2.5-flash-preview"
 
 # Context Management Configuration
-MAX_HISTORY_ITEMS = 15  # Keep this many recent messages plus system prompt
+MAX_HISTORY_ITEMS = 10  # Keep this many recent messages plus system prompt
 HISTORY_FILE = ".agent_history"
 
 
