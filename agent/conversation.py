@@ -38,10 +38,24 @@ def dump_messages_to_file(messages: List[Dict[str, Any]],
     try:
         # Create conversations directory if it doesn't exist
         conversations_path = CONVERSATIONS_DIR
+        base_dir = os.getcwd()
+        
         if use_focus_path:
-            # Resolve path through our utility
-            resolved_path, base_dir, _ = resolve_path(conversations_path, use_focus_path)
-            conversations_path = resolved_path
+            try:
+                # Resolve path through our utility - handle the case where it returns a tuple
+                result = resolve_path(conversations_path, use_focus_path)
+                if isinstance(result, tuple) and len(result) >= 1:
+                    resolved_path = result[0]
+                    if len(result) >= 2:
+                        base_dir = result[1]
+                    conversations_path = resolved_path
+                else:
+                    # If it's not a tuple, assume it's the resolved path directly
+                    conversations_path = result
+            except Exception as e:
+                print(f"Warning: Error resolving path: {e}")
+                # Fall back to default path
+                conversations_path = os.path.join(base_dir, CONVERSATIONS_DIR)
         
         os.makedirs(conversations_path, exist_ok=True)
         
@@ -109,10 +123,24 @@ def load_messages_from_file(filename: str,
     try:
         # Handle conversations directory
         conversations_path = CONVERSATIONS_DIR
+        base_dir = os.getcwd()
+        
         if use_focus_path:
-            # Resolve path through our utility
-            resolved_path, base_dir, _ = resolve_path(conversations_path, use_focus_path)
-            conversations_path = resolved_path
+            try:
+                # Resolve path through our utility - handle the case where it returns a tuple
+                result = resolve_path(conversations_path, use_focus_path)
+                if isinstance(result, tuple) and len(result) >= 1:
+                    resolved_path = result[0]
+                    if len(result) >= 2:
+                        base_dir = result[1]
+                    conversations_path = resolved_path
+                else:
+                    # If it's not a tuple, assume it's the resolved path directly
+                    conversations_path = result
+            except Exception as e:
+                print(f"Warning: Error resolving path: {e}")
+                # Fall back to default path
+                conversations_path = os.path.join(base_dir, CONVERSATIONS_DIR)
         
         # Handle filename with or without extension
         if not filename.endswith('.json'):
@@ -122,14 +150,19 @@ def load_messages_from_file(filename: str,
         file_path = os.path.join(conversations_path, filename)
         
         if not os.path.exists(file_path):
-            error_msg = f"[error]Conversation file not found: {file_path}[/error]"
-            console.print(error_msg)
-            return json.dumps({
-                "status": "error",
-                "error": "File not found",
-                "file_path": file_path,
-                "message": "Conversation file not found"
-            }), None
+            # Check for the file directly in the current directory as a fallback
+            alt_path = os.path.join(base_dir, filename)
+            if os.path.exists(alt_path):
+                file_path = alt_path
+            else:
+                error_msg = f"[error]Conversation file not found: {file_path}[/error]"
+                console.print(error_msg)
+                return json.dumps({
+                    "status": "error",
+                    "error": "File not found",
+                    "file_path": file_path,
+                    "message": "Conversation file not found"
+                }), None
         
         # Load the messages from the file
         with open(file_path, 'r', encoding='utf-8') as f:

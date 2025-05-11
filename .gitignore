@@ -26,3 +26,5 @@ env/
 
 .agent_history
 .flake8_result.txt
+
+conversations
